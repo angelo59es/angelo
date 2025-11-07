@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kart Telemetria - Dashboard Live MQTT</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #000;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,255,136,0.3);
+        }
+        .header h1 { font-size: 24px; }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff0000;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.connected {
+            background: #00ff00;
+            animation: none;
+        }
+        .status-subtext {
+            font-size: 12px;
+            color: #ccc;
+            display: block;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+        .main-panel {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .data-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid #00ff88;
+        }
+        .data-card h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+        }
+        .data-item:last-child { border-bottom: none; }
+        .data-label { color: #aaa; }
+        .data-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .temp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .temp-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .temp-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .temp-value { font-size: 20px; color: #00ff88; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏎️ Kart Telemetria - Dashboard Live</h1>
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">DISCONNESSO</span>
+            <span id="telemetryStatus" class="status-subtext">Telemetria non disponibile</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-panel">
+            <div id="map"></div>
+            <div class="data-card">
+                <h3>📍 Posizione GPS</h3>
+                <div class="data-item">
+                    <span class="data-label">Latitudine:</span>
+                    <span class="data-value" id="latitude">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Longitudine:</span>
+                    <span class="data-value" id="longitude">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Velocità:</span>
+                    <span class="data-value" id="speed">-- km/h</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Altitudine:</span>
+                    <span class="data-value" id="altitude">-- m</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Satelliti:</span>
+                    <span class="data-value" id="satellites">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="data-card">
+                <h3>🌡️ Temperature Gomme</h3>
+                <div class="temp-grid">
+                    <div class="temp-item">
+                        <div class="temp-label">Anteriore Destra</div>
+                        <div class="temp-value" id="tempAD">--°C</div>
+                    </div>
+                    <div class="temp-item">
+                        <div class="temp-label">Anteriore Sinistra</div>
+                        <div class="temp-value" id="tempAX">--°C</div>
+                    </div>
+                    <div class="temp-item">
+                        <div class="temp-label">Posteriore Destra</div>
+                        <div class="temp-value" id="tempPD">--°C</div>
+                    </div>
+                    <div class="temp-item">
+                        <div class="temp-label">Posteriore Sinistra</div>
+                        <div class="temp-value" id="tempPX">--°C</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3>🔥 Temperature Motore</h3>
+                <div class="data-item">
+                    <span class="data-label">Motore:</span>
+                    <span class="data-value" id="tempMotore">--°C</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Acqua:</span>
+                    <span class="data-value" id="tempAcqua">--°C</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Scarico:</span>
+                    <span class="data-value" id="tempScarico">--°C</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Ambiente:</span>
+                    <span class="data-value" id="tempAmbiente">--°C</span>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3>⏱️ Cronometro</h3>
+                <div class="data-item">
+                    <span class="data-label">Stato:</span>
+                    <span class="data-value" id="cronometroStatus">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Tempo Giro:</span>
+                    <span class="data-value" id="cronometroLapTime">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Ultimo Giro:</span>
+                    <span class="data-value" id="lastLapTime">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Giri Completati:</span>
+                    <span class="data-value" id="completedGiri">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Giri Target:</span>
+                    <span class="data-value" id="targetGiri">--</span>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3>📊 IMU (Accelerometro/Giroscopio)</h3>
+                <div class="data-item">
+                    <span class="data-label">Accel X:</span>
+                    <span class="data-value" id="lsm_ax">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Accel Y:</span>
+                    <span class="data-value" id="lsm_ay">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Accel Z:</span>
+                    <span class="data-value" id="lsm_az">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Gyro Z:</span>
+                    <span class="data-value" id="lsm_gz">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Stato:</span>
+                    <span class="data-value" id="lsm_stato">--</span>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3>📏 Distanze</h3>
+                <div class="data-item">
+                    <span class="data-label">Distanza Giro:</span>
+                    <span class="data-value" id="distanceLap">-- m</span>
+                </div>
+            </div>
+
+            <div class="data-card" style="border-left-color: #ffaa00;">
+                <h3>🔍 Debug Connessione</h3>
+                <div class="data-item">
+                    <span class="data-label">Stato:</span>
+                    <span class="data-value" id="debugStatus">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Ultimo Messaggio:</span>
+                    <span class="data-value" id="debugLastMessage">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Topic:</span>
+                    <span class="data-value" id="debugTopic">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Messaggi Ricevuti:</span>
+                    <span class="data-value" id="debugMessageCount">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script>
+        // Configurazione HiveMQ Cloud
+        // HiveMQ Cloud WebSocket URL - Prova entrambe le varianti se una non funziona
+        const MQTT_BROKER = 'wss://71f47778c3f94d9ea4aac7f92f89f948.s1.eu.hivemq.cloud:8884/mqtt';
+        // Alternativa (senza /mqtt): 'wss://71f47778c3f94d9ea4aac7f92f89f948.s1.eu.hivemq.cloud:8884'
+        const MQTT_USERNAME = 'angelo';
+        const MQTT_PASSWORD = 'Es31101959@99';
+        const MQTT_TOPIC_TELEMETRY = 'kart/telemetry';
+        const MQTT_TOPIC_TELEMETRY_WILDCARD = 'kart/telemetry/+'; // Cattura anche kart/telemetry/{sessionName}
+        const MQTT_TOPIC_GPS = 'kart/gps';
+
+        // Inizializza mappa
+        let map = L.map('map').setView([41.3083, 14.2667], 13); // Default: Italia centrale
+        let kartMarker = null;
+        let trackLine = [];
+        let trackPolyline = null;
+
+        let mqttConnectedFlag = false;
+        let lastTelemetryTime = 0;
+        const TELEMETRY_TIMEOUT = 5000; // millisecondi
+
+        L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '© Google',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Variabili per debug
+        let messageCount = 0;
+        let lastMessageTime = null;
+        
+        function updateDebugInfo(status, topic = null) {
+            document.getElementById('debugStatus').textContent = status;
+            if (topic) {
+                document.getElementById('debugTopic').textContent = topic;
+            }
+            document.getElementById('debugMessageCount').textContent = messageCount;
+            if (lastMessageTime) {
+                const timeAgo = Math.floor((Date.now() - lastMessageTime) / 1000);
+                document.getElementById('debugLastMessage').textContent = timeAgo + 's fa';
+            }
+        }
+        
+        // Connessione MQTT
+        console.log('🔌 Tentativo connessione a HiveMQ Cloud...');
+        console.log('📍 Broker:', MQTT_BROKER);
+        console.log('👤 Username:', MQTT_USERNAME);
+        console.log('🔑 Password:', MQTT_PASSWORD ? '***' : 'NON IMPOSTATA');
+        
+        const clientId = 'dashboard_' + Math.random().toString(16).substr(2, 8);
+        console.log('🆔 Client ID:', clientId);
+        
+        document.getElementById('statusText').textContent = 'CONNESSIONE...';
+        updateDebugInfo('CONNESSIONE...');
+        updateTelemetryStatus();
+        
+        const client = mqtt.connect(MQTT_BROKER, {
+            clientId: clientId,
+            username: MQTT_USERNAME,
+            password: MQTT_PASSWORD,
+            clean: true,
+            reconnectPeriod: 5000,
+            connectTimeout: 30 * 1000,
+            keepalive: 60,
+            protocolVersion: 4,
+            protocolId: 'MQTT',
+            rejectUnauthorized: false // Permetti certificati self-signed se necessario
+        });
+
+        client.on('connect', (packet) => {
+            console.log('✅ Connesso a HiveMQ Cloud!');
+            console.log('📊 Packet:', packet);
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'CONNESSO';
+            updateDebugInfo('CONNESSO');
+            mqttConnectedFlag = true;
+            lastTelemetryTime = 0;
+            updateTelemetryStatus();
+            
+            // Aspetta un momento prima di sottoscriversi
+            setTimeout(() => {
+                console.log('📡 Sottoscrizione ai topic...');
+                
+                // Sottoscrivi con QoS 0 (più compatibile)
+                client.subscribe(MQTT_TOPIC_TELEMETRY, { qos: 0 }, (err, granted) => {
+                    if (err) {
+                        console.error('❌ Errore sottoscrizione telemetry:', err);
+                    } else {
+                        console.log('✅ Sottoscritto a:', MQTT_TOPIC_TELEMETRY);
+                        if (granted && granted[0] && granted[0].qos === 128) {
+                            console.error('❌ SOTTOSCRIZIONE RIFIUTATA! Verifica autorizzazioni HiveMQ Cloud');
+                        }
+                    }
+                });
+
+                // Sottoscrivi anche al topic con sessione (es. kart/telemetry/NomePilota)
+                client.subscribe(MQTT_TOPIC_TELEMETRY_WILDCARD, { qos: 0 }, (err, granted) => {
+                    if (err) {
+                        console.error('❌ Errore sottoscrizione telemetry wildcard:', err);
+                    } else {
+                        console.log('✅ Sottoscritto a:', MQTT_TOPIC_TELEMETRY_WILDCARD);
+                        if (granted && granted[0] && granted[0].qos === 128) {
+                            console.error('❌ SOTTOSCRIZIONE WILDCARD RIFIUTATA! Verifica autorizzazioni HiveMQ Cloud');
+                        }
+                    }
+                });
+                
+                client.subscribe(MQTT_TOPIC_GPS, { qos: 0 }, (err, granted) => {
+                    if (err) {
+                        console.error('❌ Errore sottoscrizione GPS:', err);
+                    } else {
+                        console.log('✅ Sottoscritto a:', MQTT_TOPIC_GPS);
+                    }
+                });
+            }, 500);
+        });
+
+        client.on('disconnect', (packet) => {
+            console.log('❌ Disconnesso da HiveMQ Cloud');
+            console.log('📊 Packet:', packet);
+            document.getElementById('statusDot').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'DISCONNESSO';
+            updateDebugInfo('DISCONNESSO');
+            mqttConnectedFlag = false;
+            updateTelemetryStatus();
+        });
+
+        client.on('error', (error) => {
+            console.error('❌ Errore MQTT:', error);
+            console.error('❌ Stack:', error.stack);
+            const errorMsg = error.message || error.toString() || 'Errore sconosciuto';
+            document.getElementById('statusText').textContent = 'ERRORE: ' + errorMsg;
+            document.getElementById('statusDot').classList.remove('connected');
+            updateDebugInfo('ERRORE: ' + errorMsg);
+            mqttConnectedFlag = false;
+            updateTelemetryStatus();
+        });
+
+        client.on('close', () => {
+            console.log('🔌 Connessione chiusa');
+            document.getElementById('statusDot').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'CONNESSIONE CHIUSA';
+            mqttConnectedFlag = false;
+            updateTelemetryStatus();
+        });
+
+        client.on('offline', () => {
+            console.log('⚠️ Client MQTT offline');
+            document.getElementById('statusText').textContent = 'OFFLINE';
+            document.getElementById('statusDot').classList.remove('connected');
+            mqttConnectedFlag = false;
+            updateTelemetryStatus();
+        });
+
+        client.on('reconnect', () => {
+            console.log('🔄 Tentativo riconnessione...');
+            document.getElementById('statusText').textContent = 'RICONNESSIONE...';
+        });
+
+        client.on('end', () => {
+            console.log('🔚 Connessione terminata');
+            document.getElementById('statusText').textContent = 'TERMINATA';
+            mqttConnectedFlag = false;
+            updateTelemetryStatus();
+        });
+
+        // Listener per TUTTI i messaggi (anche se sottoscrizione fallisce)
+        client.on('message', (topic, message) => {
+            try {
+                messageCount++;
+                lastMessageTime = Date.now();
+                if (topic.includes('telemetry')) {
+                    lastTelemetryTime = Date.now();
+                }
+                const messageStr = message.toString();
+                console.log('🎉🎉🎉 MESSAGGIO RICEVUTO! 🎉🎉🎉');
+                console.log('📨 Topic:', topic);
+                console.log('📦 Payload length:', messageStr.length, 'caratteri');
+                console.log('📦 Payload (primi 300 caratteri):', messageStr.substring(0, 300));
+                updateDebugInfo('MESSAGGIO RICEVUTO', topic);
+                updateTelemetryStatus();
+                
+                // Verifica se il topic è uno di quelli che ci interessano
+                if (topic.includes('telemetry') || topic.includes('gps') || topic.includes('kart')) {
+                    console.log('✅ Topic riconosciuto, parsing JSON...');
+                    const data = JSON.parse(messageStr);
+                    console.log('✅✅✅ JSON parsato correttamente! ✅✅✅');
+                    console.log('📊 Dati ricevuti:', Object.keys(data));
+                    updateDashboard(data);
+                } else {
+                    console.log('ℹ️ Topic non riconosciuto, ignorato:', topic);
+                }
+            } catch (e) {
+                console.error('❌ Errore parsing JSON:', e);
+                console.error('❌ Messaggio ricevuto:', message.toString());
+                updateDebugInfo('ERRORE PARSING JSON');
+            }
+        });
+        
+        setInterval(updateTelemetryStatus, 2000);
+
+        // Listener aggiuntivo per debug - mostra TUTTI gli eventi MQTT
+        client.on('packetsend', (packet) => {
+            console.log('📤 Pacchetto inviato:', packet.cmd);
+        });
+        
+        client.on('packetreceive', (packet) => {
+            console.log('📥 Pacchetto ricevuto:', packet.cmd);
+            if (packet.cmd === 'publish') {
+                console.log('🎉🎉🎉 PUBLISH RICEVUTO DAL BROKER! 🎉🎉🎉');
+                console.log('   Topic:', packet.topic);
+                console.log('   QoS:', packet.qos);
+                console.log('   Payload type:', typeof packet.payload);
+                console.log('   Payload length:', packet.payload ? packet.payload.length : 0);
+                if (packet.payload) {
+                    const payloadStr = packet.payload.toString();
+                    console.log('   Payload (primi 200 char):', payloadStr.substring(0, 200));
+                }
+            }
+            if (packet.cmd === 'suback') {
+                console.log('📥 SUBACK ricevuto');
+                console.log('   Packet completo:', packet);
+                console.log('   Granted:', packet.granted);
+                
+                if (packet.granted && Array.isArray(packet.granted)) {
+                    let hasError = false;
+                    packet.granted.forEach((g, i) => {
+                        if (typeof g === 'object') {
+                            console.log(`   [${i}] Topic: ${g.topic || 'N/A'}, QoS: ${g.qos !== undefined ? g.qos : 'N/A'}`);
+                        } else {
+                            // Se granted è un array di numeri (codici QoS)
+                            // QoS 0-2 = successo, 128 = failure, 130+ = altri errori
+                            if (g === 128) {
+                                console.error(`   ❌ [${i}] ERRORE: QoS Code 128 = SOTTOSCRIZIONE RIFIUTATA!`);
+                                hasError = true;
+                            } else if (g >= 130) {
+                                console.error(`   ❌ [${i}] ERRORE: QoS Code ${g} = Errore di sottoscrizione`);
+                                hasError = true;
+                            } else {
+                                console.log(`   ✅ [${i}] QoS Code: ${g} = Successo`);
+                            }
+                        }
+                    });
+                    
+                    if (hasError) {
+                        console.error('❌ PROBLEMA: Le sottoscrizioni sono state RIFIUTATE dal broker!');
+                        console.error('❌ Possibili cause:');
+                        console.error('   1. Limitazioni del piano gratuito HiveMQ Cloud');
+                        console.error('   2. Problemi di autorizzazione/permessi');
+                        console.error('   3. Formato topic non supportato');
+                        console.error('');
+                        console.error('💡 SOLUZIONE ALTERNATIVA:');
+                        console.error('   Prova a usare un client MQTT desktop (MQTT.fx, MQTT Explorer)');
+                        console.error('   per verificare se i dati arrivano comunque al broker.');
+                        updateDebugInfo('SOTTOSCRIZIONI RIFIUTATE');
+                    } else {
+                        updateDebugInfo('SOTTOSCRIZIONI ATTIVE');
+                    }
+                } else if (packet.granted) {
+                    console.log('   Granted (non array):', packet.granted);
+                    updateDebugInfo('SOTTOSCRIZIONI ATTIVE');
+                }
+            }
+        });
+
+        function updateDashboard(data) {
+            // Aggiorna GPS
+            if (data.lat && data.lng && data.lat !== 0 && data.lng !== 0) {
+                document.getElementById('latitude').textContent = data.lat.toFixed(6);
+                document.getElementById('longitude').textContent = data.lng.toFixed(6);
+                
+                // Aggiorna mappa
+                if (!kartMarker) {
+                    kartMarker = L.marker([data.lat, data.lng]).addTo(map);
+                } else {
+                    kartMarker.setLatLng([data.lat, data.lng]);
+                }
+                
+                // Aggiungi punto al tracciato
+                trackLine.push([data.lat, data.lng]);
+                if (trackPolyline) {
+                    map.removeLayer(trackPolyline);
+                }
+                if (trackLine.length > 1) {
+                    trackPolyline = L.polyline(trackLine, { color: '#00ff88', weight: 3 }).addTo(map);
+                    map.fitBounds(trackPolyline.getBounds());
+                }
+            }
+
+            // Aggiorna velocità e altitudine
+            if (data.speed !== undefined) {
+                document.getElementById('speed').textContent = data.speed.toFixed(1) + ' km/h';
+            }
+            if (data.alt !== undefined) {
+                document.getElementById('altitude').textContent = data.alt.toFixed(1) + ' m';
+            }
+            if (data.satellites !== undefined) {
+                document.getElementById('satellites').textContent = data.satellites;
+            }
+
+            // Aggiorna temperature gomme
+            if (data.temp_ad !== undefined) {
+                document.getElementById('tempAD').textContent = data.temp_ad.toFixed(1) + '°C';
+            }
+            if (data.temp_ax !== undefined) {
+                document.getElementById('tempAX').textContent = data.temp_ax.toFixed(1) + '°C';
+            }
+            if (data.temp_pd !== undefined) {
+                document.getElementById('tempPD').textContent = data.temp_pd.toFixed(1) + '°C';
+            }
+            if (data.temp_px !== undefined) {
+                document.getElementById('tempPX').textContent = data.temp_px.toFixed(1) + '°C';
+            }
+
+            // Aggiorna temperature motore
+            if (data.temp_motore !== undefined) {
+                document.getElementById('tempMotore').textContent = data.temp_motore.toFixed(1) + '°C';
+            }
+            if (data.temp_acqua !== undefined) {
+                document.getElementById('tempAcqua').textContent = data.temp_acqua.toFixed(1) + '°C';
+            }
+            if (data.temp_scarico !== undefined) {
+                document.getElementById('tempScarico').textContent = data.temp_scarico.toFixed(1) + '°C';
+            }
+            if (data.temp_ambiente !== undefined) {
+                document.getElementById('tempAmbiente').textContent = data.temp_ambiente.toFixed(1) + '°C';
+            }
+
+            // Aggiorna cronometro
+            if (data.cronometro_status !== undefined) {
+                document.getElementById('cronometroStatus').textContent = data.cronometro_status;
+            }
+            if (data.cronometro_lap_time !== undefined) {
+                const time = data.cronometro_lap_time;
+                document.getElementById('cronometroLapTime').textContent = formatTime(time);
+            }
+            if (data.cronometro_last_lap_time !== undefined) {
+                const time = data.cronometro_last_lap_time;
+                document.getElementById('lastLapTime').textContent = formatTime(time);
+            }
+            if (data.completed_giri !== undefined) {
+                document.getElementById('completedGiri').textContent = data.completed_giri;
+            }
+            if (data.target_giri !== undefined) {
+                document.getElementById('targetGiri').textContent = data.target_giri;
+            }
+
+            // Aggiorna IMU
+            if (data.lsm_ax !== undefined) {
+                document.getElementById('lsm_ax').textContent = data.lsm_ax.toFixed(2);
+            }
+            if (data.lsm_ay !== undefined) {
+                document.getElementById('lsm_ay').textContent = data.lsm_ay.toFixed(2);
+            }
+            if (data.lsm_az !== undefined) {
+                document.getElementById('lsm_az').textContent = data.lsm_az.toFixed(2);
+            }
+            if (data.lsm_gz !== undefined) {
+                document.getElementById('lsm_gz').textContent = data.lsm_gz.toFixed(2);
+            }
+            if (data.lsm_stato !== undefined) {
+                document.getElementById('lsm_stato').textContent = data.lsm_stato;
+            }
+
+            // Aggiorna distanze
+            if (data.distance_lap !== undefined) {
+                document.getElementById('distanceLap').textContent = data.distance_lap.toFixed(0) + ' m';
+            }
+        }
+
+        function updateTelemetryStatus() {
+            const el = document.getElementById('telemetryStatus');
+            if (!el) return;
+
+            if (!mqttConnectedFlag) {
+                el.textContent = 'Telemetria non disponibile';
+                el.style.color = '#ff6666';
+                return;
+            }
+
+            if (lastTelemetryTime === 0) {
+                el.textContent = 'In attesa dati telemetria';
+                el.style.color = '#ffcc66';
+                return;
+            }
+
+            const diff = Date.now() - lastTelemetryTime;
+            if (diff > TELEMETRY_TIMEOUT) {
+                el.textContent = 'Telemetria inattiva (invio disabilitato?)';
+                el.style.color = '#ffcc66';
+            } else {
+                el.textContent = 'Telemetria attiva';
+                el.style.color = '#00ff88';
+            }
+        }
+
+        function formatTime(seconds) {
+            if (!seconds) return '00:00.000';
+            const mins = Math.floor(seconds / 60);
+            const secs = (seconds % 60).toFixed(3);
+            return `${mins.toString().padStart(2, '0')}:${secs.padStart(6, '0')}`;
+        }
+    </script>
+</body>
+</html>
+
