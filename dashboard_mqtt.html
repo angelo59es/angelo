@@ -291,6 +291,14 @@
         let kartMarker = null;
         let trackLine = [];
         let trackPolyline = null;
+let markerStartLatLng = null;
+let markerTargetLatLng = null;
+let markerAnimationId = null;
+let markerAnimationStart = 0;
+let markerAnimationDuration = 1000;
+const LIVE_REFERENCE_SPEED = 40;   // km/h di riferimento
+const LIVE_MIN_DURATION = 250;     // durata minima interpolazione (ms)
+const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
 
         let mqttConnectedFlag = false;
         let lastTelemetryTime = 0;
@@ -545,16 +553,21 @@
             if (data.lat && data.lng && data.lat !== 0 && data.lng !== 0) {
                 document.getElementById('latitude').textContent = data.lat.toFixed(6);
                 document.getElementById('longitude').textContent = data.lng.toFixed(6);
+        const newLatLng = L.latLng(data.lat, data.lng);
                 
                 // Aggiorna mappa
                 if (!kartMarker) {
-                    kartMarker = L.marker([data.lat, data.lng]).addTo(map);
+            kartMarker = L.marker(newLatLng).addTo(map);
+            markerStartLatLng = newLatLng;
+            markerTargetLatLng = newLatLng;
                 } else {
-                    kartMarker.setLatLng([data.lat, data.lng]);
+            markerStartLatLng = kartMarker.getLatLng();
+            markerTargetLatLng = newLatLng;
+            startMarkerAnimation(data.speed);
                 }
                 
                 // Aggiungi punto al tracciato
-                trackLine.push([data.lat, data.lng]);
+        trackLine.push([data.lat, data.lng]);
                 if (trackPolyline) {
                     map.removeLayer(trackPolyline);
                 }
@@ -645,6 +658,37 @@
             }
         }
 
+function startMarkerAnimation(speed) {
+    if (!kartMarker || !markerStartLatLng || !markerTargetLatLng) return;
+    if (markerAnimationId) {
+        cancelAnimationFrame(markerAnimationId);
+        markerAnimationId = null;
+    }
+    markerAnimationStart = performance.now();
+    let duration = 1000;
+    if (typeof speed === 'number' && speed > 1) {
+        duration = 1000 * (LIVE_REFERENCE_SPEED / speed);
+        duration = Math.max(LIVE_MIN_DURATION, Math.min(LIVE_MAX_DURATION, duration));
+    }
+    markerAnimationDuration = duration;
+    markerAnimationId = requestAnimationFrame(animateMarkerFrame);
+}
+
+function animateMarkerFrame(now) {
+    if (!markerStartLatLng || !markerTargetLatLng || !kartMarker) return;
+    const elapsed = now - markerAnimationStart;
+    const progress = Math.min(elapsed / markerAnimationDuration, 1);
+    const lat = markerStartLatLng.lat + (markerTargetLatLng.lat - markerStartLatLng.lat) * progress;
+    const lng = markerStartLatLng.lng + (markerTargetLatLng.lng - markerStartLatLng.lng) * progress;
+    kartMarker.setLatLng([lat, lng]);
+    if (progress < 1) {
+        markerAnimationId = requestAnimationFrame(animateMarkerFrame);
+    } else {
+        markerAnimationId = null;
+        markerStartLatLng = kartMarker.getLatLng();
+    }
+}
+
         function updateTelemetryStatus() {
             const el = document.getElementById('telemetryStatus');
             if (!el) return;
@@ -680,4 +724,7 @@
     </script>
 </body>
 </html>
+
+
+
 
