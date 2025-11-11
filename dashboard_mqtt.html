@@ -92,6 +92,50 @@
             color: #00ff88;
             font-weight: bold;
         }
+        .lap-times-wrapper {
+            margin-top: 12px;
+        }
+        .lap-times-wrapper .data-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #ccc;
+            letter-spacing: 0.5px;
+        }
+        .lap-times {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 8px;
+            border: 1px solid #444;
+            padding: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        .lap-times::-webkit-scrollbar {
+            width: 6px;
+        }
+        .lap-times::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 3px;
+        }
+        .lap-times .lap-item {
+            padding: 4px 6px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .lap-times .lap-item:last-child {
+            margin-bottom: 0;
+        }
+        .lap-times .lap-item.empty {
+            background: transparent;
+            color: #aaa;
+            text-align: center;
+            border: 1px dashed #444;
+        }
         #map {
             width: 100%;
             height: 500px;
@@ -148,6 +192,18 @@
                 <div class="data-item">
                     <span class="data-label">Satelliti:</span>
                     <span class="data-value" id="satellites">--</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Stato Tappeto:</span>
+                    <span class="data-value" id="tappetoStatus">NON CREATO</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Coordinate Tappeto:</span>
+                    <span class="data-value" id="tappetoCoords">0/10</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Centro Tappeto:</span>
+                    <span class="data-value" id="tappetoCenter">--</span>
                 </div>
             </div>
         </div>
@@ -216,6 +272,12 @@
                 <div class="data-item">
                     <span class="data-label">Giri Target:</span>
                     <span class="data-value" id="targetGiri">--</span>
+                </div>
+                <div class="lap-times-wrapper">
+                    <span class="data-label">Tempi giri</span>
+                    <div class="lap-times" id="lapTimesList">
+                        <div class="lap-item empty">Nessun giro completato</div>
+                    </div>
                 </div>
             </div>
 
@@ -587,6 +649,48 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             if (data.satellites !== undefined) {
                 document.getElementById('satellites').textContent = data.satellites;
             }
+            const tappetoStatusEl = document.getElementById('tappetoStatus');
+            if (tappetoStatusEl) {
+                let statusText = 'NON CREATO';
+                if (data.tappeto_created) {
+                    statusText = 'CREATO';
+                } else if (data.tappeto_mode) {
+                    statusText = 'IN ATTESA PARTENZA/ARRIVO';
+                } else if (data.tappeto_status_text) {
+                    statusText = data.tappeto_status_text;
+                } else if (data.tappeto_status) {
+                    statusText = data.tappeto_status;
+                } else if (data.tappetoStatus) {
+                    statusText = data.tappetoStatus;
+                }
+                tappetoStatusEl.textContent = statusText;
+            }
+            const tappetoCoordsEl = document.getElementById('tappetoCoords');
+            if (tappetoCoordsEl) {
+                if (typeof data.tappeto_coordinates === 'number') {
+                    tappetoCoordsEl.textContent = `${data.tappeto_coordinates}/10`;
+                } else if (data.tappetoCoords) {
+                    tappetoCoordsEl.textContent = data.tappetoCoords;
+                } else {
+                    tappetoCoordsEl.textContent = '0/10';
+                }
+            }
+            const tappetoCenterEl = document.getElementById('tappetoCenter');
+            if (tappetoCenterEl) {
+                if (data.tappeto_center_lat && data.tappeto_center_lng) {
+                    const lat = parseFloat(data.tappeto_center_lat);
+                    const lng = parseFloat(data.tappeto_center_lng);
+                    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                        tappetoCenterEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    } else {
+                        tappetoCenterEl.textContent = '--';
+                    }
+                } else if (data.tappetoCenter) {
+                    tappetoCenterEl.textContent = data.tappetoCenter;
+                } else {
+                    tappetoCenterEl.textContent = '--';
+                }
+            }
 
             // Aggiorna temperature gomme
             if (data.temp_ad !== undefined) {
@@ -633,6 +737,30 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
             if (data.target_giri !== undefined) {
                 document.getElementById('targetGiri').textContent = data.target_giri;
+            }
+            const lapTimesEl = document.getElementById('lapTimesList');
+            if (lapTimesEl) {
+                let lapArray = [];
+                if (Array.isArray(data.lap_times)) {
+                    lapArray = data.lap_times;
+                } else if (Array.isArray(data.lapTimes)) {
+                    lapArray = data.lapTimes;
+                } else if (typeof data.lap_times === 'string' && data.lap_times.trim().length > 0) {
+                    lapArray = data.lap_times.split(/[;|]/).map(item => item.trim()).filter(Boolean);
+                } else if (typeof data.lapTimes === 'string' && data.lapTimes.trim().length > 0) {
+                    lapArray = data.lapTimes.split(/[;|]/).map(item => item.trim()).filter(Boolean);
+                }
+
+                if (lapArray.length > 0) {
+                    const itemsHtml = lapArray.map((lap, index) => {
+                        const numericLap = typeof lap === 'number' ? lap : parseFloat(lap);
+                        const formatted = !isNaN(numericLap) ? formatTime(numericLap) : String(lap);
+                        return `<div class="lap-item">${index + 1}) ${formatted}</div>`;
+                    }).join('');
+                    lapTimesEl.innerHTML = itemsHtml;
+                } else {
+                    lapTimesEl.innerHTML = '<div class="lap-item empty">Nessun giro completato</div>';
+                }
             }
 
             // Aggiorna IMU
@@ -724,6 +852,9 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
+
+
+
 
 
 
