@@ -652,16 +652,10 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             const tappetoStatusEl = document.getElementById('tappetoStatus');
             if (tappetoStatusEl) {
                 let statusText = 'NON CREATO';
-                if (data.tappeto_created) {
+                if (data.tappeto_created === true || data.tappeto_created === "true") {
                     statusText = 'CREATO';
-                } else if (data.tappeto_mode) {
+                } else if (data.tappeto_mode === true || data.tappeto_mode === "true") {
                     statusText = 'IN ATTESA PARTENZA/ARRIVO';
-                } else if (data.tappeto_status_text) {
-                    statusText = data.tappeto_status_text;
-                } else if (data.tappeto_status) {
-                    statusText = data.tappeto_status;
-                } else if (data.tappetoStatus) {
-                    statusText = data.tappetoStatus;
                 }
                 tappetoStatusEl.textContent = statusText;
             }
@@ -745,10 +739,6 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                     lapArray = data.lap_times;
                 } else if (Array.isArray(data.lapTimes)) {
                     lapArray = data.lapTimes;
-                } else if (typeof data.lap_times === 'string' && data.lap_times.trim().length > 0) {
-                    lapArray = data.lap_times.split(/[;|]/).map(item => item.trim()).filter(Boolean);
-                } else if (typeof data.lapTimes === 'string' && data.lapTimes.trim().length > 0) {
-                    lapArray = data.lapTimes.split(/[;|]/).map(item => item.trim()).filter(Boolean);
                 }
 
                 if (lapArray.length > 0) {
@@ -852,10 +842,4 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
-
-
-
-
-
-
 
