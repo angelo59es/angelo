@@ -651,23 +651,11 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
             const tappetoStatusEl = document.getElementById('tappetoStatus');
             if (tappetoStatusEl) {
-                let statusText = 'NON CREATO';
-                if (data.tappeto_created === true || data.tappeto_created === "true") {
-                    statusText = 'CREATO';
-                } else if (data.tappeto_mode === true || data.tappeto_mode === "true") {
-                    statusText = 'IN ATTESA PARTENZA/ARRIVO';
-                }
-                tappetoStatusEl.textContent = statusText;
+                tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
             }
             const tappetoCoordsEl = document.getElementById('tappetoCoords');
             if (tappetoCoordsEl) {
-                if (typeof data.tappeto_coordinates === 'number') {
-                    tappetoCoordsEl.textContent = `${data.tappeto_coordinates}/10`;
-                } else if (data.tappetoCoords) {
-                    tappetoCoordsEl.textContent = data.tappetoCoords;
-                } else {
-                    tappetoCoordsEl.textContent = '0/10';
-                }
+                tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
             }
             const tappetoCenterEl = document.getElementById('tappetoCenter');
             if (tappetoCenterEl) {
@@ -722,9 +710,12 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 const time = data.cronometro_lap_time;
                 document.getElementById('cronometroLapTime').textContent = formatTime(time);
             }
-            if (data.cronometro_last_lap_time !== undefined) {
-                const time = data.cronometro_last_lap_time;
-                document.getElementById('lastLapTime').textContent = formatTime(time);
+            if (data.cronometro_last_lap_time !== undefined && data.cronometro_last_lap_time > 0) {
+                const container = document.getElementById('lastLapTime');
+                if (container) {
+                    const formattedTime = formatTime(data.cronometro_last_lap_time);
+                    container.innerHTML = `<div style="color:#ffaa00;font-weight:bold;text-align:center;padding:5px;background:rgba(255,170,0,0.2);border-radius:5px;margin:5px 0">Ultimo Giro: ${formattedTime}</div>`;
+                }
             }
             if (data.completed_giri !== undefined) {
                 document.getElementById('completedGiri').textContent = data.completed_giri;
@@ -734,22 +725,17 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
             const lapTimesEl = document.getElementById('lapTimesList');
             if (lapTimesEl) {
-                let lapArray = [];
-                if (Array.isArray(data.lap_times)) {
-                    lapArray = data.lap_times;
-                } else if (Array.isArray(data.lapTimes)) {
-                    lapArray = data.lapTimes;
-                }
-
-                if (lapArray.length > 0) {
-                    const itemsHtml = lapArray.map((lap, index) => {
-                        const numericLap = typeof lap === 'number' ? lap : parseFloat(lap);
-                        const formatted = !isNaN(numericLap) ? formatTime(numericLap) : String(lap);
-                        return `<div class="lap-item">${index + 1}) ${formatted}</div>`;
-                    }).join('');
-                    lapTimesEl.innerHTML = itemsHtml;
+                const lapTimes = data.lap_times || [];
+                if (lapTimes.length === 0) {
+                    lapTimesEl.innerHTML = '<div style="color:#ccc;text-align:center">Nessun giro completato</div>';
                 } else {
-                    lapTimesEl.innerHTML = '<div class="lap-item empty">Nessun giro completato</div>';
+                    let lapHtml = '';
+                    lapTimes.forEach(function(time, index) {
+                        const lapNumber = index + 1;
+                        const formattedTime = formatTime(time);
+                        lapHtml += '<div style="color:#00ff88;margin:2px 0;padding:2px 5px;background:rgba(0,255,136,0.1);border-radius:3px">' + lapNumber + ') Giro: ' + formattedTime + '</div>';
+                    });
+                    lapTimesEl.innerHTML = lapHtml;
                 }
             }
 
