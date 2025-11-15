@@ -353,9 +353,16 @@
         let kartMarker = null;
         let trackLine = [];
         let trackPolyline = null;
-let markerStartLatLng = null;
-let markerTargetLatLng = null;
-let markerAnimationId = null;
+        let markerStartLatLng = null;
+        let markerTargetLatLng = null;
+        let markerAnimationId = null;
+        
+        // Cache per valori del tappeto (per evitare lampeggiare quando GPS oscilla)
+        let cachedTappetoCreated = null;
+        let cachedTappetoMode = null;
+        let cachedTappetoCoordinates = null;
+        let cachedTappetoCenterLat = null;
+        let cachedTappetoCenterLng = null;
 let markerAnimationStart = 0;
 let markerAnimationDuration = 1000;
 const LIVE_REFERENCE_SPEED = 40;   // km/h di riferimento
@@ -640,45 +647,64 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
 
             // Aggiorna velocità e altitudine - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('speed').textContent = data.speed ? data.speed.toFixed(1) + ' km/h' : '--';
-            document.getElementById('altitude').textContent = data.alt ? data.alt.toFixed(1) + ' m' : '--';
-            document.getElementById('satellites').textContent = data.satellites || '--';
+            // IMPORTANTE: data.speed può essere 0 (valore reale), quindi controlliamo !== undefined
+            document.getElementById('speed').textContent = data.speed !== undefined ? data.speed.toFixed(1) + ' km/h' : '--';
+            document.getElementById('altitude').textContent = data.alt !== undefined ? data.alt.toFixed(1) + ' m' : '--';
+            document.getElementById('satellites').textContent = data.satellites !== undefined ? data.satellites : '--';
             // Tappeto status e coordinate - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            // IMPORTANTE: Aggiorna solo se i dati sono presenti nel JSON, altrimenti mantiene i valori precedenti
-            if (data.tappeto_created !== undefined || data.tappeto_mode !== undefined) {
-                const tappetoStatusEl = document.getElementById('tappetoStatus');
-                if (tappetoStatusEl) {
-                    tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
-                }
+            // IMPORTANTE: Usa cache per evitare lampeggiare quando GPS oscilla
+            // I valori del tappeto vengono aggiornati solo se sono "validi" (non null/undefined)
+            // e vengono mantenuti in cache per evitare reset quando GPS perde segnale
+            if (data.tappeto_created !== undefined && data.tappeto_created !== null) {
+                cachedTappetoCreated = data.tappeto_created === true || data.tappeto_created === "true";
             }
-            if (data.tappeto_coordinates !== undefined) {
-                const tappetoCoordsEl = document.getElementById('tappetoCoords');
-                if (tappetoCoordsEl) {
-                    tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
-                }
+            if (data.tappeto_mode !== undefined && data.tappeto_mode !== null) {
+                cachedTappetoMode = data.tappeto_mode === true || data.tappeto_mode === "true";
+            }
+            if (data.tappeto_coordinates !== undefined && data.tappeto_coordinates !== null) {
+                cachedTappetoCoordinates = data.tappeto_coordinates;
+            }
+            if (data.tappeto_center_lat !== undefined && data.tappeto_center_lat !== null && data.tappeto_center_lat !== 0) {
+                cachedTappetoCenterLat = data.tappeto_center_lat;
+            }
+            if (data.tappeto_center_lng !== undefined && data.tappeto_center_lng !== null && data.tappeto_center_lng !== 0) {
+                cachedTappetoCenterLng = data.tappeto_center_lng;
+            }
+            
+            // Usa valori dalla cache (o dai dati se cache non disponibile)
+            const tappetoStatusEl = document.getElementById('tappetoStatus');
+            if (tappetoStatusEl && (cachedTappetoCreated !== null || cachedTappetoMode !== null)) {
+                const tappetoCreated = cachedTappetoCreated !== null ? cachedTappetoCreated : (data.tappeto_created === true || data.tappeto_created === "true");
+                const tappetoMode = cachedTappetoMode !== null ? cachedTappetoMode : (data.tappeto_mode === true || data.tappeto_mode === "true");
+                tappetoStatusEl.textContent = tappetoCreated ? 'CREATO' : (tappetoMode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+            }
+            const tappetoCoordsEl = document.getElementById('tappetoCoords');
+            if (tappetoCoordsEl && (cachedTappetoCoordinates !== null || data.tappeto_coordinates !== undefined)) {
+                const coords = cachedTappetoCoordinates !== null ? cachedTappetoCoordinates : data.tappeto_coordinates;
+                tappetoCoordsEl.textContent = coords + '/10';
             }
             const tappetoCenterEl = document.getElementById('tappetoCenter');
             if (tappetoCenterEl) {
-                if (data.tappeto_created && data.tappeto_center_lat && data.tappeto_center_lng) {
-                    tappetoCenterEl.textContent = data.tappeto_center_lat.toFixed(4) + ',' + data.tappeto_center_lng.toFixed(4);
-                } else if (data.tappeto_created !== undefined) {
-                    // Solo se tappeto_created è esplicitamente false, mostra '--'
+                if (cachedTappetoCreated && cachedTappetoCenterLat && cachedTappetoCenterLng) {
+                    tappetoCenterEl.textContent = cachedTappetoCenterLat.toFixed(4) + ',' + cachedTappetoCenterLng.toFixed(4);
+                } else if (cachedTappetoCreated === false || (data.tappeto_created !== undefined && !data.tappeto_created)) {
                     tappetoCenterEl.textContent = '--';
                 }
-                // Se tappeto_created è undefined, mantiene il valore precedente
+                // Se tappeto non creato o valori non disponibili, mantiene il valore precedente
             }
 
             // Aggiorna temperature gomme - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('tempAD').textContent = data.temp_ad ? data.temp_ad.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAX').textContent = data.temp_ax ? data.temp_ax.toFixed(1) + '°C' : '--';
-            document.getElementById('tempPD').textContent = data.temp_pd ? data.temp_pd.toFixed(1) + '°C' : '--';
-            document.getElementById('tempPX').textContent = data.temp_px ? data.temp_px.toFixed(1) + '°C' : '--';
+            // IMPORTANTE: Le temperature possono essere 0 (valore reale), quindi controlliamo !== undefined
+            document.getElementById('tempAD').textContent = data.temp_ad !== undefined ? data.temp_ad.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAX').textContent = data.temp_ax !== undefined ? data.temp_ax.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPD').textContent = data.temp_pd !== undefined ? data.temp_pd.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPX').textContent = data.temp_px !== undefined ? data.temp_px.toFixed(1) + '°C' : '--';
 
             // Aggiorna temperature motore - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('tempMotore').textContent = data.temp_motore ? data.temp_motore.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAcqua').textContent = data.temp_acqua ? data.temp_acqua.toFixed(1) + '°C' : '--';
-            document.getElementById('tempScarico').textContent = data.temp_scarico ? data.temp_scarico.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAmbiente').textContent = data.temp_ambiente ? data.temp_ambiente.toFixed(1) + '°C' : '--';
+            document.getElementById('tempMotore').textContent = data.temp_motore !== undefined ? data.temp_motore.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAcqua').textContent = data.temp_acqua !== undefined ? data.temp_acqua.toFixed(1) + '°C' : '--';
+            document.getElementById('tempScarico').textContent = data.temp_scarico !== undefined ? data.temp_scarico.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAmbiente').textContent = data.temp_ambiente !== undefined ? data.temp_ambiente.toFixed(1) + '°C' : '--';
 
             // Aggiorna cronometro
             if (data.cronometro_status !== undefined) {
@@ -718,14 +744,15 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
 
             // Aggiorna IMU - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('lsm_ax').textContent = data.lsm_ax ? data.lsm_ax.toFixed(2) : '0.00';
-            document.getElementById('lsm_ay').textContent = data.lsm_ay ? data.lsm_ay.toFixed(2) : '0.00';
-            document.getElementById('lsm_az').textContent = data.lsm_az ? data.lsm_az.toFixed(2) : '0.00';
-            document.getElementById('lsm_gz').textContent = data.lsm_gz ? data.lsm_gz.toFixed(2) : '0.00';
-            document.getElementById('lsm_stato').textContent = data.lsm_stato || 'Fermo';
+            // IMPORTANTE: I valori possono essere 0 (valore reale), quindi controlliamo !== undefined
+            document.getElementById('lsm_ax').textContent = data.lsm_ax !== undefined ? data.lsm_ax.toFixed(2) : '0.00';
+            document.getElementById('lsm_ay').textContent = data.lsm_ay !== undefined ? data.lsm_ay.toFixed(2) : '0.00';
+            document.getElementById('lsm_az').textContent = data.lsm_az !== undefined ? data.lsm_az.toFixed(2) : '0.00';
+            document.getElementById('lsm_gz').textContent = data.lsm_gz !== undefined ? data.lsm_gz.toFixed(2) : '0.00';
+            document.getElementById('lsm_stato').textContent = data.lsm_stato !== undefined ? data.lsm_stato : 'Fermo';
 
             // Aggiorna distanze - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('distanceLap').textContent = data.distance_lap ? data.distance_lap.toFixed(0) + ' m' : '--';
+            document.getElementById('distanceLap').textContent = data.distance_lap !== undefined ? data.distance_lap.toFixed(0) + ' m' : '--';
         }
 
 function startMarkerAnimation(speed) {
@@ -794,7 +821,5 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
-
-
 
 
