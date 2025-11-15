@@ -363,6 +363,31 @@
         let cachedTappetoCoordinates = null;
         let cachedTappetoCenterLat = null;
         let cachedTappetoCenterLng = null;
+        
+        // Cache per tutti gli altri valori (mantengono valore precedente se non arrivano nuovi dati)
+        let cachedSpeed = null;
+        let cachedAlt = null;
+        let cachedSatellites = null;
+        let cachedTempAD = null;
+        let cachedTempAX = null;
+        let cachedTempPD = null;
+        let cachedTempPX = null;
+        let cachedTempMotore = null;
+        let cachedTempAcqua = null;
+        let cachedTempScarico = null;
+        let cachedTempAmbiente = null;
+        let cachedLsmAx = null;
+        let cachedLsmAy = null;
+        let cachedLsmAz = null;
+        let cachedLsmGz = null;
+        let cachedLsmStato = null;
+        let cachedDistanceLap = null;
+        let cachedCronometroStatus = null;
+        let cachedCronometroLapTime = null;
+        let cachedCompletedGiri = null;
+        let cachedTargetGiri = null;
+        let cachedLapTimes = null;
+        let cachedLastLapTime = null;
 let markerAnimationStart = 0;
 let markerAnimationDuration = 1000;
 const LIVE_REFERENCE_SPEED = 40;   // km/h di riferimento
@@ -646,11 +671,19 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 }
             }
 
-            // Aggiorna velocità e altitudine - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            // IMPORTANTE: data.speed può essere 0 (valore reale), quindi controlliamo !== undefined
-            document.getElementById('speed').textContent = data.speed !== undefined ? data.speed.toFixed(1) + ' km/h' : '--';
-            document.getElementById('altitude').textContent = data.alt !== undefined ? data.alt.toFixed(1) + ' m' : '--';
-            document.getElementById('satellites').textContent = data.satellites !== undefined ? data.satellites : '--';
+            // Aggiorna velocità e altitudine - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
+            if (data.speed !== undefined) {
+                cachedSpeed = data.speed;
+            }
+            if (data.alt !== undefined) {
+                cachedAlt = data.alt;
+            }
+            if (data.satellites !== undefined) {
+                cachedSatellites = data.satellites;
+            }
+            document.getElementById('speed').textContent = cachedSpeed !== null ? cachedSpeed.toFixed(1) + ' km/h' : '--';
+            document.getElementById('altitude').textContent = cachedAlt !== null ? cachedAlt.toFixed(1) + ' m' : '--';
+            document.getElementById('satellites').textContent = cachedSatellites !== null ? cachedSatellites : '--';
             // Tappeto status e coordinate - LOGICA IDENTICA ALLA DASHBOARD LOCALE
             // IMPORTANTE: Usa cache per evitare lampeggiare quando GPS oscilla
             // I valori del tappeto vengono aggiornati solo se sono "validi" (non null/undefined)
@@ -693,43 +726,84 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 // Se tappeto non creato o valori non disponibili, mantiene il valore precedente
             }
 
-            // Aggiorna temperature gomme - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            // IMPORTANTE: Le temperature possono essere 0 (valore reale), quindi controlliamo !== undefined
-            document.getElementById('tempAD').textContent = data.temp_ad !== undefined ? data.temp_ad.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAX').textContent = data.temp_ax !== undefined ? data.temp_ax.toFixed(1) + '°C' : '--';
-            document.getElementById('tempPD').textContent = data.temp_pd !== undefined ? data.temp_pd.toFixed(1) + '°C' : '--';
-            document.getElementById('tempPX').textContent = data.temp_px !== undefined ? data.temp_px.toFixed(1) + '°C' : '--';
+            // Aggiorna temperature gomme - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
+            if (data.temp_ad !== undefined) {
+                cachedTempAD = data.temp_ad;
+            }
+            if (data.temp_ax !== undefined) {
+                cachedTempAX = data.temp_ax;
+            }
+            if (data.temp_pd !== undefined) {
+                cachedTempPD = data.temp_pd;
+            }
+            if (data.temp_px !== undefined) {
+                cachedTempPX = data.temp_px;
+            }
+            document.getElementById('tempAD').textContent = cachedTempAD !== null ? cachedTempAD.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAX').textContent = cachedTempAX !== null ? cachedTempAX.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPD').textContent = cachedTempPD !== null ? cachedTempPD.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPX').textContent = cachedTempPX !== null ? cachedTempPX.toFixed(1) + '°C' : '--';
 
-            // Aggiorna temperature motore - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('tempMotore').textContent = data.temp_motore !== undefined ? data.temp_motore.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAcqua').textContent = data.temp_acqua !== undefined ? data.temp_acqua.toFixed(1) + '°C' : '--';
-            document.getElementById('tempScarico').textContent = data.temp_scarico !== undefined ? data.temp_scarico.toFixed(1) + '°C' : '--';
-            document.getElementById('tempAmbiente').textContent = data.temp_ambiente !== undefined ? data.temp_ambiente.toFixed(1) + '°C' : '--';
+            // Aggiorna temperature motore - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
+            if (data.temp_motore !== undefined) {
+                cachedTempMotore = data.temp_motore;
+            }
+            if (data.temp_acqua !== undefined) {
+                cachedTempAcqua = data.temp_acqua;
+            }
+            if (data.temp_scarico !== undefined) {
+                cachedTempScarico = data.temp_scarico;
+            }
+            if (data.temp_ambiente !== undefined) {
+                cachedTempAmbiente = data.temp_ambiente;
+            }
+            document.getElementById('tempMotore').textContent = cachedTempMotore !== null ? cachedTempMotore.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAcqua').textContent = cachedTempAcqua !== null ? cachedTempAcqua.toFixed(1) + '°C' : '--';
+            document.getElementById('tempScarico').textContent = cachedTempScarico !== null ? cachedTempScarico.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAmbiente').textContent = cachedTempAmbiente !== null ? cachedTempAmbiente.toFixed(1) + '°C' : '--';
 
-            // Aggiorna cronometro
+            // Aggiorna cronometro - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
             if (data.cronometro_status !== undefined) {
-                document.getElementById('cronometroStatus').textContent = data.cronometro_status;
+                cachedCronometroStatus = data.cronometro_status;
             }
             if (data.cronometro_lap_time !== undefined) {
-                const time = data.cronometro_lap_time;
-                document.getElementById('cronometroLapTime').textContent = formatTime(time);
+                cachedCronometroLapTime = data.cronometro_lap_time;
             }
-            if (data.cronometro_last_lap_time > 0) {
+            if (data.completed_giri !== undefined) {
+                cachedCompletedGiri = data.completed_giri;
+            }
+            if (data.target_giri !== undefined) {
+                cachedTargetGiri = data.target_giri;
+            }
+            if (data.lap_times !== undefined && Array.isArray(data.lap_times)) {
+                cachedLapTimes = data.lap_times;
+            }
+            if (data.cronometro_last_lap_time !== undefined && data.cronometro_last_lap_time > 0) {
+                cachedLastLapTime = data.cronometro_last_lap_time;
+            }
+            
+            if (cachedCronometroStatus !== null) {
+                document.getElementById('cronometroStatus').textContent = cachedCronometroStatus;
+            }
+            if (cachedCronometroLapTime !== null) {
+                document.getElementById('cronometroLapTime').textContent = formatTime(cachedCronometroLapTime);
+            }
+            if (cachedLastLapTime !== null && cachedLastLapTime > 0) {
                 const container = document.getElementById('lastLapTime');
                 if (container) {
-                    const formattedTime = formatTime(data.cronometro_last_lap_time);
+                    const formattedTime = formatTime(cachedLastLapTime);
                     container.innerHTML = '<div style="color:#ffaa00;font-weight:bold;text-align:center;padding:5px;background:rgba(255,170,0,0.2);border-radius:5px;margin:5px 0">Ultimo Giro: ' + formattedTime + '</div>';
                 }
             }
-            if (data.completed_giri !== undefined) {
-                document.getElementById('completedGiri').textContent = data.completed_giri;
+            if (cachedCompletedGiri !== null) {
+                document.getElementById('completedGiri').textContent = cachedCompletedGiri;
             }
-            if (data.target_giri !== undefined) {
-                document.getElementById('targetGiri').textContent = data.target_giri;
+            if (cachedTargetGiri !== null) {
+                document.getElementById('targetGiri').textContent = cachedTargetGiri;
             }
             const lapTimesEl = document.getElementById('lapTimesList');
             if (lapTimesEl) {
-                const lapTimes = data.lap_times || [];
+                const lapTimes = cachedLapTimes || [];
                 if (lapTimes.length === 0) {
                     lapTimesEl.innerHTML = '<div style="color:#ccc;text-align:center">Nessun giro completato</div>';
                 } else {
@@ -743,16 +817,33 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 }
             }
 
-            // Aggiorna IMU - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            // IMPORTANTE: I valori possono essere 0 (valore reale), quindi controlliamo !== undefined
-            document.getElementById('lsm_ax').textContent = data.lsm_ax !== undefined ? data.lsm_ax.toFixed(2) : '0.00';
-            document.getElementById('lsm_ay').textContent = data.lsm_ay !== undefined ? data.lsm_ay.toFixed(2) : '0.00';
-            document.getElementById('lsm_az').textContent = data.lsm_az !== undefined ? data.lsm_az.toFixed(2) : '0.00';
-            document.getElementById('lsm_gz').textContent = data.lsm_gz !== undefined ? data.lsm_gz.toFixed(2) : '0.00';
-            document.getElementById('lsm_stato').textContent = data.lsm_stato !== undefined ? data.lsm_stato : 'Fermo';
+            // Aggiorna IMU - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
+            if (data.lsm_ax !== undefined) {
+                cachedLsmAx = data.lsm_ax;
+            }
+            if (data.lsm_ay !== undefined) {
+                cachedLsmAy = data.lsm_ay;
+            }
+            if (data.lsm_az !== undefined) {
+                cachedLsmAz = data.lsm_az;
+            }
+            if (data.lsm_gz !== undefined) {
+                cachedLsmGz = data.lsm_gz;
+            }
+            if (data.lsm_stato !== undefined) {
+                cachedLsmStato = data.lsm_stato;
+            }
+            document.getElementById('lsm_ax').textContent = cachedLsmAx !== null ? cachedLsmAx.toFixed(2) : '0.00';
+            document.getElementById('lsm_ay').textContent = cachedLsmAy !== null ? cachedLsmAy.toFixed(2) : '0.00';
+            document.getElementById('lsm_az').textContent = cachedLsmAz !== null ? cachedLsmAz.toFixed(2) : '0.00';
+            document.getElementById('lsm_gz').textContent = cachedLsmGz !== null ? cachedLsmGz.toFixed(2) : '0.00';
+            document.getElementById('lsm_stato').textContent = cachedLsmStato !== null ? cachedLsmStato : 'Fermo';
 
-            // Aggiorna distanze - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            document.getElementById('distanceLap').textContent = data.distance_lap !== undefined ? data.distance_lap.toFixed(0) + ' m' : '--';
+            // Aggiorna distanze - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
+            if (data.distance_lap !== undefined) {
+                cachedDistanceLap = data.distance_lap;
+            }
+            document.getElementById('distanceLap').textContent = cachedDistanceLap !== null ? cachedDistanceLap.toFixed(0) + ' m' : '--';
         }
 
 function startMarkerAnimation(speed) {
