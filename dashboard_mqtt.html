@@ -650,33 +650,18 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 document.getElementById('satellites').textContent = data.satellites;
             }
             // Tappeto status e coordinate - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            // IMPORTANTE: JSON.parse() converte "true"/"false" in booleani, ma se arrivano come stringhe
-            // dobbiamo confrontarli correttamente
             const tappetoStatusEl = document.getElementById('tappetoStatus');
             if (tappetoStatusEl) {
-                // Converte stringhe "true"/"false" in booleani se necessario
-                const tappetoCreated = data.tappeto_created === true || data.tappeto_created === "true";
-                const tappetoMode = data.tappeto_mode === true || data.tappeto_mode === "true";
-                tappetoStatusEl.textContent = tappetoCreated ? 'CREATO' : (tappetoMode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+                tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
             }
             const tappetoCoordsEl = document.getElementById('tappetoCoords');
             if (tappetoCoordsEl) {
-                // Assicurati che tappeto_coordinates sia un numero
-                const coords = typeof data.tappeto_coordinates === 'number' ? data.tappeto_coordinates : (parseInt(data.tappeto_coordinates) || 0);
-                tappetoCoordsEl.textContent = coords + '/10';
+                tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
             }
             const tappetoCenterEl = document.getElementById('tappetoCenter');
             if (tappetoCenterEl) {
-                if (data.tappeto_center_lat && data.tappeto_center_lng) {
-                    const lat = parseFloat(data.tappeto_center_lat);
-                    const lng = parseFloat(data.tappeto_center_lng);
-                    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                        tappetoCenterEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    } else {
-                        tappetoCenterEl.textContent = '--';
-                    }
-                } else if (data.tappetoCenter) {
-                    tappetoCenterEl.textContent = data.tappetoCenter;
+                if (data.tappeto_created && data.tappeto_center_lat && data.tappeto_center_lng) {
+                    tappetoCenterEl.textContent = data.tappeto_center_lat.toFixed(4) + ',' + data.tappeto_center_lng.toFixed(4);
                 } else {
                     tappetoCenterEl.textContent = '--';
                 }
@@ -718,11 +703,11 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 const time = data.cronometro_lap_time;
                 document.getElementById('cronometroLapTime').textContent = formatTime(time);
             }
-            if (data.cronometro_last_lap_time !== undefined && data.cronometro_last_lap_time > 0) {
+            if (data.cronometro_last_lap_time > 0) {
                 const container = document.getElementById('lastLapTime');
                 if (container) {
                     const formattedTime = formatTime(data.cronometro_last_lap_time);
-                    container.innerHTML = `<div style="color:#ffaa00;font-weight:bold;text-align:center;padding:5px;background:rgba(255,170,0,0.2);border-radius:5px;margin:5px 0">Ultimo Giro: ${formattedTime}</div>`;
+                    container.innerHTML = '<div style="color:#ffaa00;font-weight:bold;text-align:center;padding:5px;background:rgba(255,170,0,0.2);border-radius:5px;margin:5px 0">Ultimo Giro: ' + formattedTime + '</div>';
                 }
             }
             if (data.completed_giri !== undefined) {
@@ -836,4 +821,6 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
+
+
 
