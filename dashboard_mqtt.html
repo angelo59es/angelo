@@ -651,7 +651,10 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             }
             const tappetoStatusEl = document.getElementById('tappetoStatus');
             if (tappetoStatusEl) {
-                tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+                // I valori vengono inviati come stringhe "true"/"false", quindi confrontiamo esplicitamente
+                const tappetoCreated = data.tappeto_created === true || data.tappeto_created === "true";
+                const tappetoMode = data.tappeto_mode === true || data.tappeto_mode === "true";
+                tappetoStatusEl.textContent = tappetoCreated ? 'CREATO' : (tappetoMode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
             }
             const tappetoCoordsEl = document.getElementById('tappetoCoords');
             if (tappetoCoordsEl) {
