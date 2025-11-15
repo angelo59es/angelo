@@ -650,13 +650,20 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 document.getElementById('satellites').textContent = data.satellites;
             }
             // Tappeto status e coordinate - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            // IMPORTANTE: JSON.parse() converte "true"/"false" in booleani, ma se arrivano come stringhe
+            // dobbiamo confrontarli correttamente
             const tappetoStatusEl = document.getElementById('tappetoStatus');
             if (tappetoStatusEl) {
-                tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+                // Converte stringhe "true"/"false" in booleani se necessario
+                const tappetoCreated = data.tappeto_created === true || data.tappeto_created === "true";
+                const tappetoMode = data.tappeto_mode === true || data.tappeto_mode === "true";
+                tappetoStatusEl.textContent = tappetoCreated ? 'CREATO' : (tappetoMode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
             }
             const tappetoCoordsEl = document.getElementById('tappetoCoords');
             if (tappetoCoordsEl) {
-                tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
+                // Assicurati che tappeto_coordinates sia un numero
+                const coords = typeof data.tappeto_coordinates === 'number' ? data.tappeto_coordinates : (parseInt(data.tappeto_coordinates) || 0);
+                tappetoCoordsEl.textContent = coords + '/10';
             }
             const tappetoCenterEl = document.getElementById('tappetoCenter');
             if (tappetoCenterEl) {
@@ -829,6 +836,4 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
-
-
 
