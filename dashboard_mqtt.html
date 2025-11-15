@@ -639,61 +639,46 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 }
             }
 
-            // Aggiorna velocità e altitudine
-            if (data.speed !== undefined) {
-                document.getElementById('speed').textContent = data.speed.toFixed(1) + ' km/h';
-            }
-            if (data.alt !== undefined) {
-                document.getElementById('altitude').textContent = data.alt.toFixed(1) + ' m';
-            }
-            if (data.satellites !== undefined) {
-                document.getElementById('satellites').textContent = data.satellites;
-            }
+            // Aggiorna velocità e altitudine - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            document.getElementById('speed').textContent = data.speed ? data.speed.toFixed(1) + ' km/h' : '--';
+            document.getElementById('altitude').textContent = data.alt ? data.alt.toFixed(1) + ' m' : '--';
+            document.getElementById('satellites').textContent = data.satellites || '--';
             // Tappeto status e coordinate - LOGICA IDENTICA ALLA DASHBOARD LOCALE
-            const tappetoStatusEl = document.getElementById('tappetoStatus');
-            if (tappetoStatusEl) {
-                tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+            // IMPORTANTE: Aggiorna solo se i dati sono presenti nel JSON, altrimenti mantiene i valori precedenti
+            if (data.tappeto_created !== undefined || data.tappeto_mode !== undefined) {
+                const tappetoStatusEl = document.getElementById('tappetoStatus');
+                if (tappetoStatusEl) {
+                    tappetoStatusEl.textContent = data.tappeto_created ? 'CREATO' : (data.tappeto_mode ? 'IN ATTESA PARTENZA/ARRIVO' : 'IN ATTESA');
+                }
             }
-            const tappetoCoordsEl = document.getElementById('tappetoCoords');
-            if (tappetoCoordsEl) {
-                tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
+            if (data.tappeto_coordinates !== undefined) {
+                const tappetoCoordsEl = document.getElementById('tappetoCoords');
+                if (tappetoCoordsEl) {
+                    tappetoCoordsEl.textContent = data.tappeto_coordinates + '/10';
+                }
             }
             const tappetoCenterEl = document.getElementById('tappetoCenter');
             if (tappetoCenterEl) {
                 if (data.tappeto_created && data.tappeto_center_lat && data.tappeto_center_lng) {
                     tappetoCenterEl.textContent = data.tappeto_center_lat.toFixed(4) + ',' + data.tappeto_center_lng.toFixed(4);
-                } else {
+                } else if (data.tappeto_created !== undefined) {
+                    // Solo se tappeto_created è esplicitamente false, mostra '--'
                     tappetoCenterEl.textContent = '--';
                 }
+                // Se tappeto_created è undefined, mantiene il valore precedente
             }
 
-            // Aggiorna temperature gomme
-            if (data.temp_ad !== undefined) {
-                document.getElementById('tempAD').textContent = data.temp_ad.toFixed(1) + '°C';
-            }
-            if (data.temp_ax !== undefined) {
-                document.getElementById('tempAX').textContent = data.temp_ax.toFixed(1) + '°C';
-            }
-            if (data.temp_pd !== undefined) {
-                document.getElementById('tempPD').textContent = data.temp_pd.toFixed(1) + '°C';
-            }
-            if (data.temp_px !== undefined) {
-                document.getElementById('tempPX').textContent = data.temp_px.toFixed(1) + '°C';
-            }
+            // Aggiorna temperature gomme - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            document.getElementById('tempAD').textContent = data.temp_ad ? data.temp_ad.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAX').textContent = data.temp_ax ? data.temp_ax.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPD').textContent = data.temp_pd ? data.temp_pd.toFixed(1) + '°C' : '--';
+            document.getElementById('tempPX').textContent = data.temp_px ? data.temp_px.toFixed(1) + '°C' : '--';
 
-            // Aggiorna temperature motore
-            if (data.temp_motore !== undefined) {
-                document.getElementById('tempMotore').textContent = data.temp_motore.toFixed(1) + '°C';
-            }
-            if (data.temp_acqua !== undefined) {
-                document.getElementById('tempAcqua').textContent = data.temp_acqua.toFixed(1) + '°C';
-            }
-            if (data.temp_scarico !== undefined) {
-                document.getElementById('tempScarico').textContent = data.temp_scarico.toFixed(1) + '°C';
-            }
-            if (data.temp_ambiente !== undefined) {
-                document.getElementById('tempAmbiente').textContent = data.temp_ambiente.toFixed(1) + '°C';
-            }
+            // Aggiorna temperature motore - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            document.getElementById('tempMotore').textContent = data.temp_motore ? data.temp_motore.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAcqua').textContent = data.temp_acqua ? data.temp_acqua.toFixed(1) + '°C' : '--';
+            document.getElementById('tempScarico').textContent = data.temp_scarico ? data.temp_scarico.toFixed(1) + '°C' : '--';
+            document.getElementById('tempAmbiente').textContent = data.temp_ambiente ? data.temp_ambiente.toFixed(1) + '°C' : '--';
 
             // Aggiorna cronometro
             if (data.cronometro_status !== undefined) {
@@ -732,27 +717,15 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 }
             }
 
-            // Aggiorna IMU
-            if (data.lsm_ax !== undefined) {
-                document.getElementById('lsm_ax').textContent = data.lsm_ax.toFixed(2);
-            }
-            if (data.lsm_ay !== undefined) {
-                document.getElementById('lsm_ay').textContent = data.lsm_ay.toFixed(2);
-            }
-            if (data.lsm_az !== undefined) {
-                document.getElementById('lsm_az').textContent = data.lsm_az.toFixed(2);
-            }
-            if (data.lsm_gz !== undefined) {
-                document.getElementById('lsm_gz').textContent = data.lsm_gz.toFixed(2);
-            }
-            if (data.lsm_stato !== undefined) {
-                document.getElementById('lsm_stato').textContent = data.lsm_stato;
-            }
+            // Aggiorna IMU - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            document.getElementById('lsm_ax').textContent = data.lsm_ax ? data.lsm_ax.toFixed(2) : '0.00';
+            document.getElementById('lsm_ay').textContent = data.lsm_ay ? data.lsm_ay.toFixed(2) : '0.00';
+            document.getElementById('lsm_az').textContent = data.lsm_az ? data.lsm_az.toFixed(2) : '0.00';
+            document.getElementById('lsm_gz').textContent = data.lsm_gz ? data.lsm_gz.toFixed(2) : '0.00';
+            document.getElementById('lsm_stato').textContent = data.lsm_stato || 'Fermo';
 
-            // Aggiorna distanze
-            if (data.distance_lap !== undefined) {
-                document.getElementById('distanceLap').textContent = data.distance_lap.toFixed(0) + ' m';
-            }
+            // Aggiorna distanze - LOGICA IDENTICA ALLA DASHBOARD LOCALE
+            document.getElementById('distanceLap').textContent = data.distance_lap ? data.distance_lap.toFixed(0) + ' m' : '--';
         }
 
 function startMarkerAnimation(speed) {
@@ -821,6 +794,7 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
+
 
 
 
