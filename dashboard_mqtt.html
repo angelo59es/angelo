@@ -660,14 +660,18 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
             startMarkerAnimation(data.speed);
                 }
                 
-                // Aggiungi punto al tracciato
-        trackLine.push([data.lat, data.lng]);
-                if (trackPolyline) {
-                    map.removeLayer(trackPolyline);
+                // Aggiungi punto al tracciato (come nella dashboard principale)
+                trackLine.push([data.lat, data.lng]);
+                
+                // Usa setLatLngs invece di rimuovere/ricreare (come nella dashboard principale)
+                if (!trackPolyline) {
+                    trackPolyline = L.polyline([], { color: '#00ff88', weight: 3 }).addTo(map);
                 }
-                if (trackLine.length > 1) {
-                    trackPolyline = L.polyline(trackLine, { color: '#00ff88', weight: 3 }).addTo(map);
-                    map.fitBounds(trackPolyline.getBounds());
+                trackPolyline.setLatLngs(trackLine);
+                
+                // fitBounds solo al primo punto (come nella dashboard principale - non ad ogni aggiornamento)
+                if (trackLine.length === 1) {
+                    map.setView([data.lat, data.lng], 16);
                 }
             }
 
@@ -912,5 +916,7 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
+
+
 
 
