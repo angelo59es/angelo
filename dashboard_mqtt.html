@@ -253,13 +253,6 @@
 
             <div class="data-card">
                 <h3>⏱️ Cronometro</h3>
-                <div id="garaFinitaMessage" style="display:none; background: rgba(0,255,136,0.2); border: 2px solid #00ff88; border-radius: 8px; padding: 15px; margin-bottom: 15px; text-align: center;">
-                    <div style="color: #00ff88; font-size: 1.5em; font-weight: bold; margin-bottom: 10px;">🏁 GARA FINITA 🏁</div>
-                    <div style="color: #fff; font-size: 1.2em;">
-                        <span style="color: #ffaa00;">Miglior Tempo:</span>
-                        <span id="bestLapTimeDisplay" style="font-weight: bold; color: #00ff88;">00:00.000</span>
-                    </div>
-                </div>
                 <div class="data-item">
                     <span class="data-label">Stato:</span>
                     <span class="data-value" id="cronometroStatus">--</span>
@@ -828,31 +821,6 @@ const LIVE_MAX_DURATION = 2000;    // durata massima interpolazione (ms)
                 }
             }
 
-            // Controllo se la gara è finita
-            const garaFinitaMessage = document.getElementById('garaFinitaMessage');
-            const bestLapTimeDisplay = document.getElementById('bestLapTimeDisplay');
-            const isGaraFinita = (data.redirectToFineGara === true || data.redirectToFineGara === "true") || 
-                                 (cachedCompletedGiri !== null && cachedTargetGiri !== null && cachedCompletedGiri >= cachedTargetGiri);
-            
-            if (isGaraFinita && garaFinitaMessage && bestLapTimeDisplay) {
-                // Calcola il miglior tempo dall'array lap_times
-                const lapTimes = cachedLapTimes || [];
-                let bestTime = null;
-                if (lapTimes.length > 0) {
-                    bestTime = Math.min(...lapTimes);
-                }
-                
-                if (bestTime !== null && bestTime > 0) {
-                    bestLapTimeDisplay.textContent = formatTime(bestTime);
-                } else {
-                    bestLapTimeDisplay.textContent = '00:00.000';
-                }
-                
-                garaFinitaMessage.style.display = 'block';
-            } else if (garaFinitaMessage) {
-                garaFinitaMessage.style.display = 'none';
-            }
-
             // Aggiorna IMU - MANTIENE VALORE PRECEDENTE SE NON ARRIVANO NUOVI DATI
             if (data.lsm_ax !== undefined) {
                 cachedLsmAx = data.lsm_ax;
@@ -948,7 +916,6 @@ function animateMarkerFrame(now) {
     </script>
 </body>
 </html>
-
 
 
 
